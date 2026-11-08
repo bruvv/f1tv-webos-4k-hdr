@@ -1,5 +1,6 @@
 # Local agent state and credentials must never be published.
 .pi/
+AGENTS.md
 .env
 .env.*
 !.env.example
