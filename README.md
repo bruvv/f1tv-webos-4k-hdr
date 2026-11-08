@@ -37,7 +37,7 @@ Shaka 4.16.0 is already bundled, not downloaded on the TV. Apache-2.0 license: `
 
 Like [Home Assistant for LG webOS TV](https://github.com/bruvv/Home-Assistant-for-LG-webOS-TV), pushes to `main`, pull requests, and manual workflow runs test and build the IPK. Each successful build uploads an Actions artifact containing the **official LG CLI IPK**, SHA-256 checksums, and release notes. Builds use Node 24, Python 3.15 (the latest stable Python series), and LG CLI 3.2.6. Actions use the latest released major-version tags (`@v7` or `@v8`), not commit hashes.
 
-Successful main-branch builds automatically create `vVERSION` and publish a GitHub **prerelease** if that version does not exist yet. Existing releases are not overwritten. Source archives are provided automatically by GitHub. Releases remain marked experimental while TV playback is unverified.
+Successful main-branch builds automatically create `vVERSION` and publish a GitHub **prerelease** if that version does not exist yet. Existing releases are not overwritten. After publishing (or when the release already exists), the workflow downloads the published IPK, verifies its checksum, and updates `repo.json` with its actual size and SHA-256. A changed catalog is committed back to `main` using GitHub's bot identity. A manual run on `main` can retry a catalog refresh without replacing release assets. Source archives are provided automatically by GitHub. Releases remain marked experimental while TV playback is unverified.
 
 For a new release:
 
@@ -47,7 +47,33 @@ For a new release:
 
 No manually created tag or release token secret is needed: the release job uses GitHub's built-in token with repository-content write access. Fork pull requests only build/test and cannot publish releases. Binary packages, local agent memory, credentials, and caches are excluded from Git.
 
-## Install and debug
+## Install through Glasshouse
+
+In the TV's Glasshouse dashboard, open **Apps → Catalogs** and add:
+
+```text
+https://github.com/bruvv/f1tv-webos-4k-hdr
+```
+
+Glasshouse resolves the repository's `repo.json` and lists **F1 TV UHD Lab**. Follow its prompts to install or update. This is a custom catalog, not a submission to the official Homebrew Channel catalog, and does not enable unattended installation.
+
+If Glasshouse needs a direct catalog URL, use:
+
+```text
+https://raw.githubusercontent.com/bruvv/f1tv-webos-4k-hdr/HEAD/repo.json
+```
+
+The catalog points to the actual published IPK with its version, byte size, and SHA-256; the icon is pinned to the release tag. Catalog generation and release automation are tested, but installation through Glasshouse on the TV remains unverified. The app's existing experimental playback limitations still apply.
+
+To regenerate locally from an already downloaded release asset:
+
+```sh
+python3 catalog.py path/to/com.bruvv.f1tv_0.2.1_all.ipk
+```
+
+Do not regenerate the published catalog from a local rebuild: the bytes may differ from the release asset.
+
+## Manual installation and debugging
 
 Version 0.2.1 uses the public app ID `com.bruvv.f1tv`. It installs separately from earlier prototypes; remove an old installation through the TV's app manager if needed. Sessions are not migrated.
 
