@@ -1,0 +1,19 @@
+# Local agent state and credentials must never be published.
+.pi/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Generated packages and development caches.
+dist/
+*.ipk
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+node_modules/
+.DS_Store
+release-notes.md
+released-tags.txt
