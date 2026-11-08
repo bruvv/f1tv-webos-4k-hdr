@@ -13,6 +13,10 @@ Versions below 1.0.0 are experimental and do not imply verified TV playback.
 - Release automation refreshes the catalog from the published IPK, including retries for existing releases, without overwriting assets.
 - Publishing rules require Glasshouse support for future webOS IPK work.
 
+### Changed
+
+- Update the CI Node.js runtime from 24 to the latest stable major, 26; verify official versions for all CI runtimes and tools.
+
 These are repository/distribution changes; the 0.2.1 app binary is unchanged.
 
 ## [0.2.1] - 2026-11-08
