@@ -1,0 +1,13 @@
+{
+  "id":"com.niels.f1tv4k",
+  "title":"F1 TV UHD Lab",
+  "type":"web",
+  "main":"index.html",
+  "icon":"icon.png",
+  "version":"0.2.0",
+  "vendor":"Independent webOS research",
+  "description":"Standalone F1 TV catalog and DASH Widevine playback prototype",
+  "resolution":"1920x1080",
+  "trustLevel":"default",
+  "inspectable":true
+}

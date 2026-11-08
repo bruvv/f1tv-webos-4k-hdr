@@ -1,0 +1,101 @@
+name: Build and release IPK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Test JavaScript and package build
+        run: |
+          node --check app/app.js
+          node --check app/diagnostics.js
+          node --check service/service.js
+          node --test tests/*.test.js
+          python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Prepare release metadata
+        id: metadata
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import re
+
+          info = json.loads(pathlib.Path('app/appinfo.json').read_text())
+          version = info['version']
+          assert re.fullmatch(r'\d+\.\d+\.\d+', version), 'Invalid version'
+          service = json.loads(pathlib.Path('service/package.json').read_text())
+          assert service['version'] == version, 'Service version mismatch'
+          pattern = r'^## \[' + re.escape(version)
+          pattern += r'\][^\n]*\n(.*?)(?=^## |\Z)'
+          changelog = pathlib.Path('CHANGELOG.md').read_text()
+          match = re.search(pattern, changelog, re.M | re.S)
+          assert match and match[1].strip(), 'Missing changelog entry'
+          pathlib.Path('release-notes.md').write_text(match[1].strip() + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
+          PY
+      - name: Build reproducible package and official LG IPK
+        run: |
+          python build.py --outdir dist/reproducible
+          npm exec --yes --package=@webos-tools/cli@3.2.6 -- \
+            ares-package app service -o dist
+          (cd dist && sha256sum ./*.ipk > SHA256SUMS)
+      # actions/upload-artifact v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: f1tv-webos-${{ steps.metadata.outputs.version }}
+          path: |
+            dist/*.ipk
+            dist/SHA256SUMS
+            release-notes.md
+          if-no-files-found: error
+
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # actions/download-artifact v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: f1tv-webos-${{ needs.build.outputs.version }}
+      - name: Publish new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          # API failures must not be mistaken for an unpublished version.
+          gh api --paginate "repos/$GH_REPO/releases" \
+            --jq '.[].tag_name' > released-tags.txt
+          if grep -Fxq "v$VERSION" released-tags.txt; then
+            echo "v$VERSION exists; bump version for a new release."
+          else
+            gh release create "v$VERSION" dist/*.ipk dist/SHA256SUMS \
+              --target "$GITHUB_SHA" --title "v$VERSION" --prerelease \
+              --notes-file release-notes.md
+          fi
