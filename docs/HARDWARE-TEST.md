@@ -19,7 +19,7 @@ Choose your existing authorized root/developer connection in the interactive set
 # Read-only identification; current CLI deprecates ares-device-info:
 ares-device -i -d myTV
 # Install the officially packaged app and service:
-ares-install -d myTV dist/official/com.bruvv.f1tv_0.2.1_all.ipk
+ares-install -d myTV dist/official/com.bruvv.f1tv_0.2.2_all.ipk
 ares-launch -d myTV com.bruvv.f1tv
 # App console and JS service inspector:
 ares-inspect -d myTV -a com.bruvv.f1tv

@@ -4,11 +4,11 @@ Versions use `MAJOR.MINOR.PATCH`. `app/appinfo.json` is the release version sour
 `service/package.json` must match it. A new version requires a matching entry here.
 Versions below 1.0.0 are experimental and do not imply verified TV playback.
 
-## [Unreleased]
+## [0.2.2] - 2026-11-08
 
 ### Added
 
-- Glasshouse custom catalog (`repo.json`) for the published 0.2.1 IPK, using the release asset's actual size and SHA-256.
+- Glasshouse custom catalog (`repo.json`) using the published release asset's actual size and SHA-256.
 - Catalog generator, regression tests, and installation instructions.
 - Release automation refreshes the catalog from the published IPK, including retries for existing releases, without overwriting assets.
 - Publishing rules require Glasshouse support for future webOS IPK work.
@@ -17,7 +17,12 @@ Versions below 1.0.0 are experimental and do not imply verified TV playback.
 
 - Update the CI Node.js runtime from 24 to the latest stable major, 26; verify official versions for all CI runtimes and tools.
 
-These are repository/distribution changes; the 0.2.1 app binary is unchanged.
+### Fixed
+
+- Publish 0.2.2 at a new IPK URL to avoid stale catalog hashes associated with the previously replaced 0.2.1 asset. Published IPKs must not be replaced under the same version/URL.
+- Document Glasshouse's catalog-cache refresh procedure for SHA-256 mismatch errors. Keep checksum validation enabled.
+
+Playback code is unchanged; installation and playback on the target TV remain unverified.
 
 ## [0.2.1] - 2026-11-08
 

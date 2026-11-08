@@ -1,4 +1,4 @@
-# Compatibility and evidence ledger — 0.2.1
+# Compatibility and evidence ledger — 0.2.2
 
 ## Bottom line
 

@@ -1,4 +1,4 @@
-# F1 TV UHD Lab for LG webOS — 0.2.1
+# F1 TV UHD Lab for LG webOS — 0.2.2
 
 [![Build and release IPK](https://github.com/bruvv/f1tv-webos-4k-hdr/actions/workflows/build-release.yml/badge.svg)](https://github.com/bruvv/f1tv-webos-4k-hdr/actions/workflows/build-release.yml)
 
@@ -22,11 +22,11 @@ Requirements: Python 3.10+ and Node 20+ for the development tools. No Python pac
 node --test tests/*.test.js
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 python3 build.py
-# Deterministic package: dist/com.bruvv.f1tv_0.2.1_all.ipk
+# Deterministic package: dist/com.bruvv.f1tv_0.2.2_all.ipk
 
 # Also package using LG's official tooling (downloads CLI into npm's cache):
 npm exec --yes --package=@webos-tools/cli@3.2.6 -- ares-package app service -o dist/official
-# dist/official/com.bruvv.f1tv_0.2.1_all.ipk
+# dist/official/com.bruvv.f1tv_0.2.2_all.ipk
 ```
 
 The Python build is tested for byte-identical repeat output in the same environment, archive validity and required payload files. Cross-version gzip implementations may produce different compressed bytes. Official CLI packaging reports warnings for missing requiredACG and possible target Node version differences; those are not hardware installation results. Do not install both variants as different apps: they share an application ID.
@@ -38,6 +38,8 @@ Shaka 4.16.0 is already bundled, not downloaded on the TV. Apache-2.0 license: `
 Like [Home Assistant for LG webOS TV](https://github.com/bruvv/Home-Assistant-for-LG-webOS-TV), pushes to `main`, pull requests, and manual workflow runs test and build the IPK. Each successful build uploads an Actions artifact containing the **official LG CLI IPK**, SHA-256 checksums, and release notes. Builds use Node 26, Python 3.15, and LG CLI 3.2.6. Check official releases for the latest stable versions of all CI runtimes and tools when updating the workflow; do not default to older/LTS versions. Actions use the latest released major-version tags (`@v7` or `@v8`), not commit hashes.
 
 Successful main-branch builds automatically create `vVERSION` and publish a GitHub **prerelease** if that version does not exist yet. Existing releases are not overwritten. After publishing (or when the release already exists), the workflow downloads the published IPK, verifies its checksum, and updates `repo.json` with its actual size and SHA-256. A changed catalog is committed back to `main` using GitHub's bot identity. A manual run on `main` can retry a catalog refresh without replacing release assets. Source archives are provided automatically by GitHub. Releases remain marked experimental while TV playback is unverified.
+
+Published IPK versions and download URLs are immutable: never delete/recreate a release to replace its IPK, even for repository-history cleanup. If package bytes change, bump the version. Glasshouse can cache catalog metadata for an hour, so reusing a version/URL can pair an old expected hash with new bytes.
 
 For a new release:
 
@@ -65,10 +67,16 @@ https://raw.githubusercontent.com/bruvv/f1tv-webos-4k-hdr/HEAD/repo.json
 
 The catalog points to the actual published IPK with its version, byte size, and SHA-256; the icon is pinned to the release tag. Catalog generation and release automation are tested, but installation through Glasshouse on the TV remains unverified. The app's existing experimental playback limitations still apply.
 
+### If Glasshouse reports a SHA-256 mismatch
+
+In **Apps → Catalogs**, remove this custom catalog and add the same repository URL again. Removing a catalog does not uninstall its apps. This clears Glasshouse's in-memory catalog cache; simply retrying the install can reuse metadata cached for up to an hour. Confirm the app card shows **0.2.2 or newer** before retrying.
+
+Version 0.2.1 was replaced during repository cleanup, so cached metadata may expect its previous hash. Version 0.2.2 has a new download URL. The current catalog uses the hexadecimal SHA-256 format expected by Glasshouse. Do not disable hash verification or change the hash to match an unknown download.
+
 To regenerate locally from an already downloaded release asset:
 
 ```sh
-python3 catalog.py path/to/com.bruvv.f1tv_0.2.1_all.ipk
+python3 catalog.py path/to/com.bruvv.f1tv_0.2.2_all.ipk
 ```
 
 Do not regenerate the published catalog from a local rebuild: the bytes may differ from the release asset.
@@ -81,7 +89,7 @@ Download the `.ipk` and `SHA256SUMS` from a release, then verify and install wit
 
 ```sh
 shasum -a 256 -c SHA256SUMS
-ares-install -d myTV com.bruvv.f1tv_0.2.1_all.ipk
+ares-install -d myTV com.bruvv.f1tv_0.2.2_all.ipk
 ares-launch -d myTV com.bruvv.f1tv
 ```
 
