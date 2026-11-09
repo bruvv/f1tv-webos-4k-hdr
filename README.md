@@ -1,4 +1,4 @@
-# F1 TV UHD Lab for LG webOS — 0.2.2
+# F1 TV UHD Lab for LG webOS — 0.2.3
 
 [![Build and release IPK](https://github.com/bruvv/f1tv-webos-4k-hdr/actions/workflows/build-release.yml/badge.svg)](https://github.com/bruvv/f1tv-webos-4k-hdr/actions/workflows/build-release.yml)
 
@@ -22,11 +22,11 @@ Requirements: Python 3.10+ and Node 20+ for the development tools. No Python pac
 node --test tests/*.test.js
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 python3 build.py
-# Deterministic package: dist/com.bruvv.f1tv_0.2.2_all.ipk
+# Deterministic package: dist/com.bruvv.f1tv_0.2.3_all.ipk
 
 # Also package using LG's official tooling (downloads CLI into npm's cache):
 npm exec --yes --package=@webos-tools/cli@3.2.6 -- ares-package app service -o dist/official
-# dist/official/com.bruvv.f1tv_0.2.2_all.ipk
+# dist/official/com.bruvv.f1tv_0.2.3_all.ipk
 ```
 
 The Python build is tested for byte-identical repeat output in the same environment, archive validity and required payload files. Cross-version gzip implementations may produce different compressed bytes. Official CLI packaging reports warnings for missing requiredACG and possible target Node version differences; those are not hardware installation results. Do not install both variants as different apps: they share an application ID.
@@ -76,7 +76,7 @@ Version 0.2.1 was replaced during repository cleanup, so cached metadata may exp
 To regenerate locally from an already downloaded release asset:
 
 ```sh
-python3 catalog.py path/to/com.bruvv.f1tv_0.2.2_all.ipk
+python3 catalog.py path/to/com.bruvv.f1tv_0.2.3_all.ipk
 ```
 
 Do not regenerate the published catalog from a local rebuild: the bytes may differ from the release asset.
@@ -89,11 +89,28 @@ Download the `.ipk` and `SHA256SUMS` from a release, then verify and install wit
 
 ```sh
 shasum -a 256 -c SHA256SUMS
-ares-install -d myTV com.bruvv.f1tv_0.2.2_all.ipk
+ares-install -d myTV com.bruvv.f1tv_0.2.3_all.ipk
 ares-launch -d myTV com.bruvv.f1tv
 ```
 
 See [hardware test instructions](docs/HARDWARE-TEST.md) for exact device setup, installation, inspectors and evidence checklist. Start with the **official CLI package** for deployment validation. Installing an IPK is a device change; use your already-authorized developer/root connection. This project does not install or modify Homebrew Channel or the root environment.
+
+## Account sign-in and the correct token
+
+Password sign-in uses F1's current OAuth/PKCE flow, following FastF1's published account research. This replaces the old by-password API; it does **not** bypass browser verification, CAPTCHA, MFA or rate limits. The flow is covered by synthetic local tests, not a successful real-account login on the TV.
+
+If direct sign-in fails:
+
+1. Sign in normally at F1's official account/F1 TV website in your own computer browser.
+2. Open the browser's developer tools → **Application/Storage → Cookies**, and inspect the `formula1.com` entries for **`login-session`**.
+3. Copy the cookie's complete **Value** into the app's token field. Whole JSON (including URL-encoded JSON) is supported. Alternatively copy the exact **`subscriptionToken`** value from that JSON or your own successful F1 sign-in response. A raw subscription token is a three-part JWT separated by two dots.
+4. Compare the displayed received character count with the copied value's length. A small textarea can scroll without losing characters; the count is what matters. If the TV's clipboard/remote tool cuts the paste, split the original text into consecutive pieces, paste each and press **Add chunk**, then **Connect token**. Do not repeat pieces or add separators. **Clear** discards all pieces. The combined input limit is 65,536 characters.
+
+Supported wrappers include `subscriptionToken`, `data.subscriptionToken`, `resultObj.subscriptionToken`, and OAuth `access_token` containing a nested subscriptionToken. Only the extracted subscription token goes to the entitlement API. Parsing a JWT does not validate it: F1 must accept its signature and expiry before the app reports authentication.
+
+**Do not use** the separate `entitlement_token` cookie, an ID token, or a JSON challenge response such as `{token:"3:…", renewInSec:…, cookieDomain:…}`. A freshly generated browser challenge token is still not an account subscription credential. If F1 rejects a complete subscriptionToken, sign in afresh and check the TV's date/time; copying more challenge tokens will not fix it.
+
+Treat cookie values and subscription tokens like passwords. Do not post screenshots, share them in chat, send them to token-decoder websites, or commit them. Imported values stay in memory only; automatic session refresh is not implemented.
 
 ## Security and limitations
 
@@ -110,6 +127,7 @@ See [hardware test instructions](docs/HARDWARE-TEST.md) for exact device setup, 
 
 - [Android UHD patch](https://github.com/Alexvbp/f1tv-4k-patch): client-side Android/ClearVR/EGL capability and rendering changes, not portable webOS playback code.
 - [F1OpenViewer](https://github.com/npanu420/F1OpenViewer), MIT: public API/authentication/playback/license reference. No source copied during this iteration.
+- [FastF1 account internals](https://github.com/theOehrly/Fast-F1/tree/383e950b02a9b864c5f09a961a7451862edaf8b5/fastf1/internals/f1account), MIT: current OAuth/PKCE sequence; attribution in `service/FASTF1-LICENSE`.
 - [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel): rooted deployment reference.
 - [LG streaming and DRM](https://webostv.developer.lge.com/develop/specifications/streaming-protocol-drm).
 - [Shaka Player](https://github.com/shaka-project/shaka-player), Apache-2.0.

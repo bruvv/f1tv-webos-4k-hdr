@@ -5,11 +5,11 @@ const https = require('https');
 const http = require('http');
 const crypto = require('crypto');
 const relayPolicy = require('./relay-policy');
+const {parseSubscriptionToken, loginWithPassword} = require('./auth');
 const service = new Service('com.bruvv.f1tv.service');
 const PlaybackLease = require('./playback-lease');
 const playbackLease = new PlaybackLease(service.activityManager);
 const BASE = 'https://f1tv.formula1.com';
-const AUTH = 'https://api.formula1.com/v2/account/subscriber/authenticate/by-password';
 const PORT = 38791;
 const userAgent = 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/132.0.0.0 Safari/537.36';
 const state = {token: null, entitlementToken: null, location: null, play: null,
@@ -25,6 +25,8 @@ function request(url, opts) {
     const req = https.request(parsed, {method:opts.method||'GET',headers: Object.assign({
       'User-Agent':userAgent,'Accept':'application/json, */*','Accept-Language':'en-US,en;q=0.9'
     },opts.headers||{}),timeout:18000}, res => {
+      res.on('error',reject);
+      res.on('aborted',()=>reject(new Error('Response interrupted')));
       let bufs=[],length=0;
       res.on('data', b=>{length+=b.length;if(length>5*1024*1024){req.destroy(new Error('Response too large'));return;}bufs.push(b);});
       res.on('end',()=>{let body=Buffer.concat(bufs);resolve({status:res.statusCode,headers:res.headers,body,
@@ -52,7 +54,7 @@ const platform='WEB_DASH',lang='ENG';
 function path(version,action,profile){return BASE+'/'+version+'/'+(state.token?'R':'A')+'/'+lang+'/'+(profile||platform)+'/ALL/'+action;}
 function authHeaders(){const h={};if(state.token)h.ascendontoken=state.token;if(state.entitlementToken)h.entitlementtoken=state.entitlementToken;return h;}
 async function init(token){
-  if(!token||typeof token!=='string'||token.length<50)throw new Error('Invalid subscription token');
+  token=parseSubscriptionToken(token);
   state.session=crypto.randomBytes(20).toString('hex');
   state.allowedHosts.clear();
   state.token=token;state.entitlementToken=null;state.location=null;state.play=null;
@@ -67,20 +69,13 @@ async function init(token){
     entitlement:state.location.entitlement||'Unknown'};
   } catch(error) {
     state.token=null;state.entitlementToken=null;state.location=null;state.play=null;
+    if(/AscendonToken.*(signature|expired)/i.test(error.message))throw new Error('F1 rejected the subscriptionToken signature or expiry. A fresh challenge/access/entitlement token is not necessarily the account subscriptionToken. Import the account login response and check the TV clock.');
     throw error;
   }
 }
 function locParts(){if(!state.location)throw new Error('Sign in first');return [state.location.entitlement||'F1_TV_Pro_Annual',state.location.groupId||2].map(String);}
 async function signIn(email,password){
-  if(!email||!password)throw new Error('Enter email and password');
-  const bodies=[{Login:email,Password:password},{email,password}];let failure;
-  for(const body of bodies){
-    try{const res=await jsonRequest(AUTH,{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://account.formula1.com',Referer:'https://account.formula1.com/'},body:JSON.stringify(body)});
-      const token=res.subscriptionToken||res.token||res.accessToken||res.resultObj?.subscriptionToken;
-      if(token)return init(token);failure=new Error('Login response had no subscription token');
-    }catch(e){failure=e;if(/403/.test(e.message))break;}
-  }
-  throw new Error('Direct login unavailable: '+(failure?.message||'unknown error')+'. Use subscription-token sign-in.');
+  return init(await loginWithPassword(email,password,request));
 }
 function flatten(items){return (items||[]).map(item=>{const m=item.metadata||{};return {
   id:String(m.contentId||item.id||''),title:m.title||item.title||item.uiMetadata?.mainTitle||'F1 TV',

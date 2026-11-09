@@ -4,6 +4,20 @@ Versions use `MAJOR.MINOR.PATCH`. `app/appinfo.json` is the release version sour
 `service/package.json` must match it. A new version requires a matching entry here.
 Versions below 1.0.0 are experimental and do not imply verified TV playback.
 
+## [0.2.3] - 2026-11-09
+
+### Fixed
+
+- Replace the legacy password endpoint with the current OAuth authorization-code/PKCE flow documented by FastF1; isolate cookies by origin and validate state before exchanging a code.
+- Import raw subscription JWTs, supported login JSON/cookies, or OAuth access tokens containing a subscriptionToken. Reject browser challenge tokens and malformed input with actionable messages.
+- Show received token-input character counts and support consecutive chunks for TV paste limits; reject oversized pastes without silently shortening them.
+- Clear passwords after failed as well as successful attempts, and prevent duplicate sign-in requests.
+
+### Validation
+
+- Synthetic authentication, credential-origin, OAuth state/PKCE, service, and UI regression tests pass locally. F1 remains responsible for token signature and expiry validation.
+- Real-account password sign-in, TV input behavior, and playback remain unverified. Browser verification/MFA must be completed through F1's official browser sign-in; no bypass is implemented.
+
 ## [0.2.2] - 2026-11-08
 
 ### Added

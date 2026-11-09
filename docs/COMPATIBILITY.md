@@ -1,4 +1,4 @@
-# Compatibility and evidence ledger — 0.2.2
+# Compatibility and evidence ledger — 0.2.3
 
 ## Bottom line
 
@@ -14,6 +14,8 @@ The target model is OLED65G69LS. Do not conflate it with the 2016 G6 family. Ins
 | Relay exact-host HTTPS policy | Node regression tests | Additional CDN origins fail closed; a legitimate cross-host redirect may need an explicitly reviewed allowlist |
 | License credentials restricted to F1 license origin | Redirect policy regression tests | No live license issued; external license providers deliberately rejected |
 | Failed login clears partial entitlement | Service harness test | Harness uses test-only response doubles, not F1 production |
+| OAuth/PKCE password flow, state checks and credential-origin isolation | Synthetic transport and service tests; public configuration extraction checked against F1's frontend | No successful real-account login; browser challenge/MFA still requires official browser sign-in |
+| Token JSON/cookie extraction, challenge rejection, paste counts and chunks | Parser and simulated DOM tests, including long input | Real TV clipboard/remote behavior untested; only F1 validates token signatures and expiry |
 | Logout/session changes invalidate relay URLs | Source implementation | No hardware test |
 | Audio/subtitle cycling | UI calls Shaka language APIs | Not exercised with real multi-language content |
 | Playback diagnostics | Video-element dimensions, Shaka active-track metadata and frame counters | Not evidence of hardware acceleration or actual HDR output |
@@ -48,9 +50,11 @@ F1OpenViewer commit `bd4e1cf0ef79aacdc3acafe969759d79895dd502`, MIT:
 - electron/f1tvPlayback.js: platform candidate selection, pipeline-dependent license fallback, manifest playToken cookie and URL fallback.
 - electron/licenseProxy.js: binary challenge forwarding and DRM/account headers.
 
-Our license forwarding now includes both drmtoken and Bearer authorization when a DRM token is returned. Manifest response playToken cookies take precedence over the pre-existing URL fallback. Account entitlement and a possible per-play entitlement are distinct; the latter still needs implementation/validation. The fallback CONTENT/LA/widevine route is not proven valid for all pipeline versions. Login anti-bot/browser flows, JWT verification, refresh/re-authentication and production response schemas remain open work. API compatibility is inferred from public source, not confirmed by F1.
+Our license forwarding now includes both drmtoken and Bearer authorization when a DRM token is returned. Manifest response playToken cookies take precedence over the pre-existing URL fallback. Account entitlement and a possible per-play entitlement are distinct; the latter still needs implementation/validation. The fallback CONTENT/LA/widevine route is not proven valid for all pipeline versions. Interactive anti-bot/browser flows, local JWT signature verification, refresh/re-authentication and production response-schema validation remain open work. The app delegates imported-token signature/expiry validation to F1's entitlement endpoint. API compatibility is inferred from public source, not confirmed by F1.
 
 No F1OpenViewer source was copied in this iteration. Its MIT license does not license F1 content or establish API access permission.
+
+FastF1 commit `383e950b02a9b864c5f09a961a7451862edaf8b5`, MIT, documents the newer PingOne OAuth/PKCE account flow. Version 0.2.3 follows this sequence instead of F1OpenViewer's legacy password endpoint; the license is bundled as `service/FASTF1-LICENSE`. Public OAuth configuration was retrieved successfully, but account sign-in and entitlement acceptance are not production-verified.
 
 ## Playback approach decision
 

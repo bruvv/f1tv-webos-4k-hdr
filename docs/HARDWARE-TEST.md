@@ -19,7 +19,7 @@ Choose your existing authorized root/developer connection in the interactive set
 # Read-only identification; current CLI deprecates ares-device-info:
 ares-device -i -d myTV
 # Install the officially packaged app and service:
-ares-install -d myTV dist/official/com.bruvv.f1tv_0.2.2_all.ipk
+ares-install -d myTV dist/official/com.bruvv.f1tv_0.2.3_all.ipk
 ares-launch -d myTV com.bruvv.f1tv
 # App console and JS service inspector:
 ares-inspect -d myTV -a com.bruvv.f1tv
@@ -47,7 +47,7 @@ Record exact model, firmware and webOS version before playback. Do not infer ins
 
 1. **Install/launch:** own interface must appear without visiting F1's site. Verify the packaged JS service starts and the relay binds localhost port 38791. Stop on service/permission errors rather than claiming success.
 2. **Capabilities before login:** Account → Check playback capabilities. Save the console's `[F1TV capabilities]` JSON. This contains no account tokens. Record HEVC MSE declarations and each Widevine robustness result; a rejected robustness is a compatibility result, not a reason to bypass DRM.
-3. **Account:** sign in using your own authorized Premium account or F1-issued subscription token in the UI. Password/token fields clear on success. A failed region lookup must not leave the app authenticated. Restart the service to confirm sessions are currently nonpersistent.
+3. **Account:** sign in using your own authorized Premium account or F1-issued subscription token in the UI. Password fields clear after each attempt; token input/chunks clear on success or Clear. Check the received-character count with a long paste and test consecutive chunks. Whole login-session JSON must work; a synthetic 3: challenge must be rejected without an account request. Browser verification/MFA is not bypassed. A failed region lookup must not leave the app authenticated. Restart the service to confirm sessions are currently nonpersistent.
 4. **Catalog:** compare a live session and a recent replay with your account's available content. Record API HTTP/error codes, not tokenized URLs or full responses. Full seasons/upcoming/onboard browsing is not implemented.
 5. **Baseline playback:** leave experimental UHD profile off. Play an entitled DASH replay, then live content. Verify audible audio, pause/resume, seeking, focus and Back. Leave playback running for at least five minutes to test the service lifetime, then background the app; playback must stop and the activity should release.
 6. **UHD experiment:** enable the opt-in Android TV profile only with your authorized subscription. A returned streamType mentioning UHD is not success. Inspect the MPD locally for actual Representation dimensions/codecs/frameRate, HLG transfer metadata, tile/SRD dependencies and DRM signaling. Never publish the signed MPD URL. Stop if it requires ClearVR composition unsupported by the selected player.

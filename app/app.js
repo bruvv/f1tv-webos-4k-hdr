@@ -4,6 +4,7 @@
 const SERVICE='luna://com.bruvv.f1tv.service/';
 const $=id=>document.getElementById(id);
 let authenticated=false,currentPage='live',player=null,currentPlay=null,quality=-1,statsTimer=null,heartbeatTimer=null;
+let tokenChunks='',signingIn=false;
 function notice(msg){$('notice').textContent=msg||'';$('notice').classList.toggle('hidden',!msg);}
 function status(s){$('status').textContent=s;}
 function call(method,params){
@@ -52,14 +53,41 @@ async function load(kind){
   try{const x=await call('catalog',{kind});cards(x,kind);}
   catch(e){parent.textContent='';notice('Catalog: '+e.message);}
 }
+function tokenReceipt(){
+  $('tokenReceipt').textContent='Received '+(tokenChunks.length+$('token').value.length)+' characters'+
+    (tokenChunks?' ('+tokenChunks.length+' saved in chunks)':'')+'. No token value is logged.';
+}
+function clearToken(){tokenChunks='';$('token').value='';tokenReceipt();}
+function appendToken(){
+  const piece=$('token').value;
+  if(!piece){notice('Paste the next consecutive piece first.');return;}
+  if(tokenChunks.length+piece.length>65536){notice('Sign-in input exceeds 65536 characters.');return;}
+  tokenChunks+=piece;$('token').value='';tokenReceipt();
+}
+function pasteToken(event){
+  const text=event.clipboardData?.getData('text/plain');
+  if(!text)return;
+  const field=$('token');
+  event.preventDefault();
+  const count=tokenChunks.length+field.value.length-(field.selectionEnd-field.selectionStart)+text.length;
+  if(count>65536){notice('Paste exceeds 65536 characters; nothing was added.');return;}
+  field.setRangeText(text,field.selectionStart,field.selectionEnd,'end');tokenReceipt();
+}
 async function login(kind){
-  notice('');status('Authenticating');
+  if(signingIn)return;
+  signingIn=true;
+  for(const id of ['signIn','useToken','appendToken','clearToken'])$(id).disabled=true;
+  notice('');status('Authenticating with F1');
   try{
-    const result=kind==='token'?await call('token',{token:$('token').value.trim()}):
+    const result=kind==='token'?await call('token',{token:tokenChunks+$('token').value}):
       await call('login',{email:$('email').value.trim(),password:$('password').value});
-    authenticated=true;$('password').value='';$('token').value='';
+    authenticated=true;clearToken();
     status('Signed in  •  '+clean(result.entitlement));go('live');
-  }catch(e){status('Not signed in');notice('Sign-in: '+e.message);}
+  }catch(e){status('Sign-in failed');notice('Sign-in: '+e.message);}
+  finally{
+    $('password').value='';signingIn=false;
+    for(const id of ['signIn','useToken','appendToken','clearToken'])$(id).disabled=false;
+  }
 }
 function playerError(e){const msg=e?.detail?.message||e?.message||String(e);$('videoOverlay').classList.remove('hidden');$('videoOverlay').textContent='Playback error: '+msg;}
 function updateStats(){
@@ -185,8 +213,10 @@ async function boot(){
   $('refreshLive').onclick=()=>authenticated?load('live'):go('settings');
   $('refreshReplay').onclick=()=>authenticated?load('replay'):go('settings');
   $('signIn').onclick=()=>login('password');$('useToken').onclick=()=>login('token');
+  $('token').oninput=tokenReceipt;$('token').onpaste=pasteToken;
+  $('appendToken').onclick=appendToken;$('clearToken').onclick=clearToken;tokenReceipt();
   $('signOut').onclick=async()=>{
-    try{await stopPlayback();await call('logout');authenticated=false;status('Signed out');go('settings');}
+    try{await stopPlayback();await call('logout');authenticated=false;clearToken();$('password').value='';status('Signed out');go('settings');}
     catch(error){notice('Sign-out failed: '+error.message);}
   };
   $('back').onclick=()=>go('live');

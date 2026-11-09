@@ -40,12 +40,13 @@
               <label>Email <input id="email" type="email" autocomplete="off" placeholder="you@example.com"></label>
               <label>Password <input id="password" type="password" autocomplete="off" placeholder="F1 TV password"></label>
               <button id="signIn">Sign in</button>
-              <p class="hint">F1 may block direct API login with HTTP 403. If that happens, use a subscription token instead.</p>
+              <p class="hint">Uses F1's current OAuth/PKCE sign-in. If F1 requires browser verification or MFA, sign in on your computer and import your subscription token below.</p>
             </div>
             <div class="panel"><h2>Sign in with subscription token</h2>
-              <label>Subscription token (JWT)<textarea id="token" rows="3" placeholder="Paste your account's F1 subscriptionToken"></textarea></label>
-              <button id="useToken">Connect token</button>
-              <p class="hint">Only F1-issued subscription tokens are supported. The token stays in memory and is lost on app restart.</p>
+              <label>Subscription token or login JSON<textarea id="token" rows="3" maxlength="65536" spellcheck="false" autocomplete="off" aria-describedby="tokenReceipt tokenHelp" placeholder="Paste subscriptionToken or the full login-session JSON"></textarea></label>
+              <p id="tokenReceipt" class="hint" role="status" aria-live="polite">Received 0 characters.</p>
+              <div class="actions"><button id="useToken">Connect token</button><button id="appendToken" class="secondary">Add chunk</button><button id="clearToken" class="secondary">Clear</button></div>
+              <p id="tokenHelp" class="hint">Use subscriptionToken from your own signed-in F1 login-session cookie; whole cookie JSON is accepted. Not entitlement_token, an ID token, or a 3: browser challenge token. If TV paste cuts off text, paste consecutive pieces with Add chunk, then Connect token. Memory only; F1 validates the signature and expiry.</p>
             </div>
           </div>
           <div class="actions"><label class="toggle"><input id="preferUhd" type="checkbox"> Request Android TV UHD profile (experimental)</label><button id="signOut" class="secondary">Sign out</button></div>
