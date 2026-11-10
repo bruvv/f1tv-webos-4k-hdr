@@ -1,8 +1,8 @@
-# Compatibility and evidence ledger — 0.2.3
+# Compatibility and evidence ledger — 0.2.4
 
 ## Bottom line
 
-This is an installable **experimental client**, not a validated F1 TV Premium replacement. No F1 account or target TV was available to this engineering run. Login, live/catalog responses, licenses, decoding, audio, remote behavior and HDR output have **not** been tested against production/hardware. No content or decryption keys were obtained. There are no sample streams or simulated playback successes.
+This is an installable **experimental client**, not a validated F1 TV Premium replacement. No F1 account or target TV was available to this engineering run. A user reported successful Premium-account login on 0.2.3 and an idle sign-out after roughly a minute. That is user-reported login evidence, not instrumented service-lifetime or playback evidence. The 0.2.4 Enter navigation, foreground lifetime fix, live/catalog correctness, licenses, decoding, audio and HDR output have **not** been independently tested against production/hardware. No content or decryption keys were obtained. There are no sample streams or simulated playback successes.
 
 The target model is OLED65G69LS. Do not conflate it with the 2016 G6 family. Installed firmware remains unknown. Product-generation information is not device inspection.
 
@@ -14,13 +14,15 @@ The target model is OLED65G69LS. Do not conflate it with the 2016 G6 family. Ins
 | Relay exact-host HTTPS policy | Node regression tests | Additional CDN origins fail closed; a legitimate cross-host redirect may need an explicitly reviewed allowlist |
 | License credentials restricted to F1 license origin | Redirect policy regression tests | No live license issued; external license providers deliberately rejected |
 | Failed login clears partial entitlement | Service harness test | Harness uses test-only response doubles, not F1 production |
-| OAuth/PKCE password flow, state checks and credential-origin isolation | Synthetic transport and service tests; public configuration extraction checked against F1's frontend | No successful real-account login; browser challenge/MFA still requires official browser sign-in |
+| OAuth/PKCE password flow, state checks and credential-origin isolation | Synthetic transport and service tests; public configuration extraction checked against F1's frontend | Premium login success user-reported on 0.2.3, not independently instrumented; browser challenge/MFA still requires official browser sign-in |
 | Token JSON/cookie extraction, challenge rejection, paste counts and chunks | Parser and simulated DOM tests, including long input | Real TV clipboard/remote behavior untested; only F1 validates token signatures and expiry |
 | Logout/session changes invalidate relay URLs | Source implementation | No hardware test |
 | Audio/subtitle cycling | UI calls Shaka language APIs | Not exercised with real multi-language content |
 | Playback diagnostics | Video-element dimensions, Shaka active-track metadata and frame counters | Not evidence of hardware acceleration or actual HDR output |
 | Capability probes | Tests cover unsupported MSE/EME and rejected robustness | EME acceptance is not a Widevine level certification or license guarantee |
-| Playback service lifetime | Activity Manager lease with 15-second heartbeat, stop/background release and 60-second expiry; unit test | Installed webos-service callback/object behavior not verified on TV |
+| Foreground account/relay service lifetime | Activity acquired after login, renewed every 15 seconds on all signed-in pages; simulated 10-minute idle-browsing test; stop preserves it, background/logout/crash releases it | Updated installed webos-service behavior still needs TV confirmation; no persisted sessions |
+| LG keyboard Enter navigation | Synthetic event/DOM tests cover email → password → Sign in, no auto-submit, repeat/IME handling; follows LG control-key/blur guidance | OSK transition timing not observed on TV |
+| No-live message and latest-race shortcut | UI/service tests cover empty vs failed catalog, recent-date ordering and exclusion of support races/highlights/shows | Scans at most 100 recent results; real catalog classification not independently confirmed |
 | Reproducible Python IPK | Full-byte repeat-build comparison and archive/content tests | Python packager is not LG certification |
 | Official LG CLI packaging | @webos-tools/cli 3.2.6 ares-package succeeded | Installation not tested; CLI warned about missing requiredACG and target Node version |
 
@@ -54,7 +56,7 @@ Our license forwarding now includes both drmtoken and Bearer authorization when 
 
 No F1OpenViewer source was copied in this iteration. Its MIT license does not license F1 content or establish API access permission.
 
-FastF1 commit `383e950b02a9b864c5f09a961a7451862edaf8b5`, MIT, documents the newer PingOne OAuth/PKCE account flow. Version 0.2.3 follows this sequence instead of F1OpenViewer's legacy password endpoint; the license is bundled as `service/FASTF1-LICENSE`. Public OAuth configuration was retrieved successfully, but account sign-in and entitlement acceptance are not production-verified.
+FastF1 commit `383e950b02a9b864c5f09a961a7451862edaf8b5`, MIT, documents the newer PingOne OAuth/PKCE account flow. Version 0.2.3 follows this sequence instead of F1OpenViewer's legacy password endpoint; the license is bundled as `service/FASTF1-LICENSE`. Public OAuth configuration was retrieved successfully. Premium-account login was subsequently user-reported on 0.2.3, but entitlement responses were not independently captured or verified.
 
 ## Playback approach decision
 
@@ -85,3 +87,5 @@ LG's webOS TV 26 format table lists Ultra HD HEVC Main/Main10 up to 3840×2160/6
 - https://webostv.developer.lge.com/develop/guides/drm-content-playback
 - https://webostv.developer.lge.com/develop/guides/js-service-usage
 - https://webostv.developer.lge.com/develop/references/webos-service-reference
+- https://webostv.developer.lge.com/develop/guides/js-service-faq
+- https://webostv.developer.lge.com/develop/guides/virtual-keyboard

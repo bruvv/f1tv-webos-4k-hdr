@@ -3,7 +3,7 @@
 (function(){
 const SERVICE='luna://com.bruvv.f1tv.service/';
 const $=id=>document.getElementById(id);
-let authenticated=false,currentPage='live',player=null,currentPlay=null,quality=-1,statsTimer=null,heartbeatTimer=null;
+let authenticated=false,currentPage='live',player=null,currentPlay=null,quality=-1,statsTimer=null;
 let tokenChunks='',signingIn=false;
 function notice(msg){$('notice').textContent=msg||'';$('notice').classList.toggle('hidden',!msg);}
 function status(s){$('status').textContent=s;}
@@ -36,7 +36,18 @@ function clean(txt){return String(txt==null?'':txt);}
 function cards(items,kind){
   const parent=$(kind==='live'?'liveList':'replayList');
   parent.replaceChildren();
-  if(!items||!items.length){let n=document.createElement('div');n.className='placeholder';n.textContent='No sessions returned. Try again later.';parent.append(n);return;}
+  if(!items||!items.length){
+    const n=document.createElement('div');n.className='placeholder';
+    n.textContent=kind==='live'?'No live session is on right now. Rewatch the latest race or browse recent replays.':'No replays are available for your account right now.';
+    if(kind==='live'){
+      const actions=document.createElement('div');actions.className='actions';
+      const latest=document.createElement('button');latest.textContent='Rewatch the latest race';
+      latest.onclick=()=>rewatchLatest(latest);
+      const browse=document.createElement('button');browse.textContent='Browse replays';browse.className='secondary';
+      browse.onclick=()=>go('replay');actions.append(latest,browse);n.append(actions);
+    }
+    parent.append(n);return;
+  }
   for(const item of items){
     const tile=document.createElement('button');tile.className='tile';tile.type='button';
     const sub=document.createElement('small');sub.textContent=kind==='live'?'LIVE':'REPLAY';
@@ -46,6 +57,16 @@ function cards(items,kind){
     tile.onclick=()=>startVideo(item);
     parent.append(tile);
   }
+}
+async function rewatchLatest(button){
+  button.disabled=true;notice('Finding the latest race replay…');
+  try{
+    const items=await call('catalog',{kind:'latest-race'});
+    if(currentPage!=='live')return;
+    if(items.length)await startVideo(items[0]);
+    else notice('No full F1 race was identified in recent replays. Choose Browse replays to see available sessions.');
+  }catch(e){notice('Latest race: '+e.message);}
+  finally{button.disabled=false;}
 }
 async function load(kind){
   const parent=$(kind==='live'?'liveList':'replayList');
@@ -89,6 +110,16 @@ async function login(kind){
     for(const id of ['signIn','useToken','appendToken','clearToken'])$(id).disabled=false;
   }
 }
+async function renewSession(){
+  if(!authenticated||signingIn||document.hidden)return;
+  try{
+    const result=await call('heartbeat');
+    if(!result.authenticated){
+      authenticated=false;status('Sign-in required');go('settings');
+      notice('The account service restarted. Sign in again to reconnect.');
+    }
+  }catch(e){notice('Account service: '+e.message);}
+}
 function playerError(e){const msg=e?.detail?.message||e?.message||String(e);$('videoOverlay').classList.remove('hidden');$('videoOverlay').textContent='Playback error: '+msg;}
 function updateStats(){
   const v=$('video');
@@ -107,7 +138,6 @@ function updateStats(){
 }
 async function stopPlayback(){
   if(statsTimer){clearInterval(statsTimer);statsTimer=null;}
-  if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
   const old=player;player=null;currentPlay=null;
   $('video').pause();
   if(old)await old.destroy();
@@ -138,7 +168,6 @@ async function startVideo(item){
     for(const id of ['audio','subtitles'])delete $(id).dataset.index;
     const v=$('video');
     currentPlay=await call('play',{contentId:item.contentId,requestUhd:$('preferUhd').checked});
-    heartbeatTimer=setInterval(()=>call('heartbeat').catch(error=>notice('Playback service: '+error.message)),15000);
     $('streamType').textContent=currentPlay.profile+'  •  '+(currentPlay.streamType||'Unknown stream')+(currentPlay.claimedUhd?'  •  UHD manifest selected (unverified playback)':'');
     if(currentPlay.isDash){
       if(typeof shaka==='undefined')throw new Error('Bundled Shaka Player library unavailable');
@@ -187,6 +216,11 @@ function changeQuality(){
   $('quality').textContent='Quality: '+t.height+'p';
 }
 function remote(e){
+  if((e.key==='Enter'||e.keyCode===13)&&!e.isComposing&&['email','password'].includes(e.target.id)){
+    e.preventDefault();e.stopPropagation();
+    if(!e.repeat){e.target.blur();$(e.target.id==='email'?'password':'signIn').focus();}
+    return;
+  }
   if(e.key==='Escape'||e.key==='Backspace'||e.keyCode===461){
     if(currentPage==='player'){e.preventDefault();go('live');return;}
   }
@@ -231,10 +265,16 @@ async function boot(){
     }catch(error){$('capabilities').textContent='Capability check failed: '+error.message;}
   };
   document.addEventListener('keydown',remote);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&currentPage==='player')go('live');});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(currentPage==='player')go('live');
+      if(authenticated)call('suspend').catch(error=>notice('Account service: '+error.message));
+    }else renewSession();
+  });
+  setInterval(renewSession,15000);
   try{const r=await call('status');if(r.serverError)throw new Error('Local media relay: '+r.serverError);
     authenticated=!!r.authenticated;status(authenticated?'Connected':'Sign-in required');
-    if(authenticated)load('live');else go('settings');
+    if(authenticated){await renewSession();if(authenticated)load('live');}else go('settings');
   }catch(e){status('Service unavailable');notice(e.message+'  •  Check JS service packaging.');go('settings');notice(e.message+'  •  Check JS service packaging.');}
 }
 boot();

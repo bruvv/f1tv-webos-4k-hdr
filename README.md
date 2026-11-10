@@ -1,4 +1,4 @@
-# F1 TV UHD Lab for LG webOS — 0.2.3
+# F1 TV UHD Lab for LG webOS — 0.2.4
 
 [![Build and release IPK](https://github.com/bruvv/f1tv-webos-4k-hdr/actions/workflows/build-release.yml/badge.svg)](https://github.com/bruvv/f1tv-webos-4k-hdr/actions/workflows/build-release.yml)
 
@@ -8,9 +8,9 @@ An independent, locally rendered TV interface with a packaged JavaScript service
 
 ## Status: experimental, NOT verified to play F1 TV
 
-The source builds and local regression tests pass. Official LG CLI packaging also succeeds. **No target TV or authorized F1 account was connected during this run.** Installation, sign-in, real catalog responses, licenses, video/audio and 4K/HDR remain unverified.
+The source builds and local regression tests pass. Official LG CLI packaging also succeeds. A user reported successful Premium-account login on 0.2.3, followed by a short idle sign-out. Version 0.2.4 addresses foreground service lifetime; its keyboard/session fixes still need TV confirmation. **No target TV or authorized F1 account is connected to this development environment.** Catalog correctness, licenses, video/audio and 4K/HDR remain unverified.
 
-Implemented: own UI, directional navigation, experimental password/subscription-token login, live/recent replay requests, DASH/Shaka and native HLS fallback, quality cycling, audio/subtitle language cycling, capability probes, playback diagnostics, localhost media/license relay and playback activity lease.
+Implemented: own UI, directional navigation, experimental password/subscription-token login, live/recent replay requests, DASH/Shaka and native HLS fallback, quality cycling, audio/subtitle language cycling, capability probes, playback diagnostics, localhost media/license relay, latest-race shortcut and foreground account activity lease.
 
 Missing: persistent sessions, automatic refresh, full season/Grand Prix/upcoming navigation, onboard discovery and verified end-to-end UHD. See [the compatibility/evidence report](docs/COMPATIBILITY.md) before interpreting any capability claim.
 
@@ -22,11 +22,11 @@ Requirements: Python 3.10+ and Node 20+ for the development tools. No Python pac
 node --test tests/*.test.js
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 python3 build.py
-# Deterministic package: dist/com.bruvv.f1tv_0.2.3_all.ipk
+# Deterministic package: dist/com.bruvv.f1tv_0.2.4_all.ipk
 
 # Also package using LG's official tooling (downloads CLI into npm's cache):
 npm exec --yes --package=@webos-tools/cli@3.2.6 -- ares-package app service -o dist/official
-# dist/official/com.bruvv.f1tv_0.2.3_all.ipk
+# dist/official/com.bruvv.f1tv_0.2.4_all.ipk
 ```
 
 The Python build is tested for byte-identical repeat output in the same environment, archive validity and required payload files. Cross-version gzip implementations may produce different compressed bytes. Official CLI packaging reports warnings for missing requiredACG and possible target Node version differences; those are not hardware installation results. Do not install both variants as different apps: they share an application ID.
@@ -76,7 +76,7 @@ Version 0.2.1 was replaced during repository cleanup, so cached metadata may exp
 To regenerate locally from an already downloaded release asset:
 
 ```sh
-python3 catalog.py path/to/com.bruvv.f1tv_0.2.3_all.ipk
+python3 catalog.py path/to/com.bruvv.f1tv_0.2.4_all.ipk
 ```
 
 Do not regenerate the published catalog from a local rebuild: the bytes may differ from the release asset.
@@ -89,7 +89,7 @@ Download the `.ipk` and `SHA256SUMS` from a release, then verify and install wit
 
 ```sh
 shasum -a 256 -c SHA256SUMS
-ares-install -d myTV com.bruvv.f1tv_0.2.3_all.ipk
+ares-install -d myTV com.bruvv.f1tv_0.2.4_all.ipk
 ares-launch -d myTV com.bruvv.f1tv
 ```
 
@@ -97,7 +97,11 @@ See [hardware test instructions](docs/HARDWARE-TEST.md) for exact device setup, 
 
 ## Account sign-in and the correct token
 
-Password sign-in uses F1's current OAuth/PKCE flow, following FastF1's published account research. This replaces the old by-password API; it does **not** bypass browser verification, CAPTCHA, MFA or rate limits. The flow is covered by synthetic local tests, not a successful real-account login on the TV.
+Password sign-in uses F1's current OAuth/PKCE flow, following FastF1's published account research. This replaces the old by-password API; it does **not** bypass browser verification, CAPTCHA, MFA or rate limits. The flow is covered by synthetic local tests, and a user reported successful Premium-account login on 0.2.3; no instrumented account/TV session is available here.
+
+On the LG keyboard, **Enter moves email → password → Sign in**. Password Enter focuses the button; it does not submit. Activate Sign in separately. The account activity is kept alive while the signed-in app remains in the foreground, including while browsing with no live session. Closing/backgrounding the app may allow the service to stop; F1 expiry, service restart and reboot still require sign-in. No credentials are saved to disk.
+
+When no session is live, choose **Rewatch the latest race** or **Browse replays**. The shortcut scans up to 100 recent results ordered by start date, selecting an identifiable full F1 race replay rather than highlights, support races or shows. If none can be identified, it keeps browsing available instead of playing an unrelated video.
 
 If direct sign-in fails:
 
@@ -118,7 +122,7 @@ Treat cookie values and subscription tokens like passwords. Do not post screensh
 - Local HTTP binds only to 127.0.0.1 and requires an ephemeral playback/session secret. Logout and new playback invalidate prior relay URLs.
 - Media URLs are exact-host HTTPS restricted. Unexpected cross-host CDN redirects are rejected rather than expanding access to shared CDN tenants.
 - Account and license headers may go only to the selected F1 license origin. A cross-origin license redirect is rejected. No keys are exposed to the app.
-- Activity Manager keeps the relay alive during playback, renewed by a 15-second foreground heartbeat. Stop/background releases the lease; heartbeat loss expires it after 60 seconds. The installed TV runtime must still validate this API behavior.
+- Activity Manager keeps RAM authentication and the relay alive on all signed-in foreground pages, renewed by a 15-second heartbeat. Stopping playback preserves the account activity. Backgrounding/sign-out releases it; heartbeat loss expires it after 60 seconds. The installed TV runtime must still validate this API behavior.
 - Android TV device-profile requests are **off by default**. They are experimental, not proof that webOS is an authorized UHD client or supports ClearVR's pipeline.
 - Diagnostics label resolution from the video element separately from manifest frame rate, codec, bitrate and HDR metadata. They do not claim hardware acceleration or HDR output based on a 4K interface or capability probe.
 - Do not publish passwords, tokens, signed manifests, license challenges/responses or raw network captures. Use redacted error codes and capability reports.

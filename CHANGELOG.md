@@ -4,6 +4,21 @@ Versions use `MAJOR.MINOR.PATCH`. `app/appinfo.json` is the release version sour
 `service/package.json` must match it. A new version requires a matching entry here.
 Versions below 1.0.0 are experimental and do not imply verified TV playback.
 
+## [0.2.4] - 2026-11-09
+
+### Fixed
+
+- Enter in email moves to password; Enter in password dismisses the keyboard and focuses Sign in without submitting. Preserve IME composition and suppress repeated Enter navigation.
+- Replace the empty live catalog's generic retry text with a clear no-live-session message, a latest-race replay action, and Browse replays. API failures remain errors rather than appearing as an empty schedule.
+- Keep RAM authentication alive on all signed-in foreground pages, not only during playback. Login acquires an Activity Manager lease; 15-second foreground heartbeats renew it. Leaving playback no longer releases the account activity.
+- Release the activity on backgrounding/sign-out or after 60 seconds without an app heartbeat; guard concurrent/late activity creation. Service restart and F1 token expiry still require sign-in; no passwords or tokens are persisted.
+
+### Validation
+
+- User reported Premium-account login success on 0.2.3; the short idle sign-out is the motivation for this update, not proof of F1 token expiry.
+- Local tests cover Enter focus, live/replay actions, 10 minutes of simulated idle browsing, stop/background/logout cleanup, and concurrent activity creation. Updated OSK behavior and service lifetime still need target-TV confirmation.
+- Latest-race selection scans up to 100 recent results in descending start-date order and excludes support races, highlights, shows, practice and sprint sessions. If no full F1 race is identifiable, browsing remains available; complete archive traversal is not implemented.
+
 ## [0.2.3] - 2026-11-09
 
 ### Fixed

@@ -7,8 +7,8 @@ const crypto = require('crypto');
 const relayPolicy = require('./relay-policy');
 const {parseSubscriptionToken, loginWithPassword} = require('./auth');
 const service = new Service('com.bruvv.f1tv.service');
-const PlaybackLease = require('./playback-lease');
-const playbackLease = new PlaybackLease(service.activityManager);
+const SessionLease = require('./session-lease');
+const sessionLease = new SessionLease(service.activityManager);
 const BASE = 'https://f1tv.formula1.com';
 const PORT = 38791;
 const userAgent = 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/132.0.0.0 Safari/537.36';
@@ -55,6 +55,7 @@ function path(version,action,profile){return BASE+'/'+version+'/'+(state.token?'
 function authHeaders(){const h={};if(state.token)h.ascendontoken=state.token;if(state.entitlementToken)h.entitlementtoken=state.entitlementToken;return h;}
 async function init(token){
   token=parseSubscriptionToken(token);
+  sessionLease.release();
   state.session=crypto.randomBytes(20).toString('hex');
   state.allowedHosts.clear();
   state.token=token;state.entitlementToken=null;state.location=null;state.play=null;
@@ -65,9 +66,11 @@ async function init(token){
   const loc=await jsonRequest(path('1.0','USER/LOCATION'),{headers:authHeaders()});
   state.location=loc.resultObj?.userLocation?.[0];
   if(!state.location)throw new Error('F1 did not return region/entitlement information');
+  await sessionLease.acquire();
   return {authenticated:true,region:state.location.countryCode||state.location.country||'Unknown',
     entitlement:state.location.entitlement||'Unknown'};
   } catch(error) {
+    sessionLease.release();
     state.token=null;state.entitlementToken=null;state.location=null;state.play=null;
     if(/AscendonToken.*(signature|expired)/i.test(error.message))throw new Error('F1 rejected the subscriptionToken signature or expiry. A fresh challenge/access/entitlement token is not necessarily the account subscriptionToken. Import the account login response and check the TV clock.');
     throw error;
@@ -80,6 +83,7 @@ async function signIn(email,password){
 function flatten(items){return (items||[]).map(item=>{const m=item.metadata||{};return {
   id:String(m.contentId||item.id||''),title:m.title||item.title||item.uiMetadata?.mainTitle||'F1 TV',
   type:m.contentSubtype||m.emfAttributes?.VideoType||'',description:m.description||'',
+  videoType:m.emfAttributes?.VideoType||'',series:m.emfAttributes?.Series||'',
   contentId:Number(m.contentId||item.id||0), image:m.pictureUrl||m.imageUrl||''
 };}).filter(x=>Number.isFinite(x.contentId)&&x.contentId>0);}
 async function catalog(kind){
@@ -88,8 +92,17 @@ async function catalog(kind){
     const r=await jsonRequest(path('1.0','EVENTS/LIVENOW/'+ent+'/'+group),{headers:authHeaders()});
     return flatten(r.resultObj?.items);
   }
-  const r=await jsonRequest(path('2.0','PAGE/SEARCH/VOD/'+ent+'/'+group)+'?maxResults=30',{headers:authHeaders()});
-  return flatten(r.resultObj?.containers);
+  // shortcut: latest-race scans 100 recent results; use archive pagination if no race is returned.
+  const query=new URLSearchParams({maxResults:kind==='latest-race'?'100':'30',orderBy:'startDate',sortOrder:'desc'});
+  const r=await jsonRequest(path('2.0','PAGE/SEARCH/VOD/'+ent+'/'+group)+'?'+query,{headers:authHeaders()});
+  const items=flatten(r.resultObj?.containers);
+  if(kind!=='latest-race')return items;
+  const race=items.find(item=>/^REPLAY$/i.test(item.type)&&
+    (!item.videoType||/^meetingSession$/i.test(item.videoType))&&
+    (!item.series||/^(F1|FORMULA\s*1)$/i.test(item.series))&&
+    /\b(race|grand prix)\b/i.test(item.title)&&
+    !/\b(practice|qualifying|sprint|highlights?|recap|review|preview|show|onboard|kids|f2|f3|formula\s*[23]|academy|porsche|supercup)\b|race\s+in\s+\d/i.test(item.title));
+  return race?[race]:[];
 }
 function extractPaToken(manifest){
   try{const m=/\/pa_([^/?#]+)/.exec(manifest);if(!m)return null;
@@ -147,7 +160,7 @@ async function getPlay(contentId,channelId,requestUhd){
   const playToken=extractPaToken(obj.url);
   state.play={url:obj.url,licenseUrl,playToken,drmToken:obj.drmToken||'',profile:t.platform,
     streamType:obj.streamType||'',contentId:String(contentId)};
-  await playbackLease.acquire();
+  await sessionLease.acquire();
   return {manifestUrl:obj.url,profile:t.platform,streamType:obj.streamType||'',
     apiVersion:t.version,claimedUhd:/UHD/i.test(obj.streamType||''),
     isDash,hasDrm:!!licenseUrl,licenseProxy:'http://127.0.0.1:'+PORT+'/license?s='+state.session,
@@ -219,11 +232,16 @@ function register(name,fn){service.register(name, message=>{
     .catch(err=>message.respond({returnValue:false,errorText:err.message||'Unknown error'}));
 });}
 register('status',()=>({serverError:state.serverError,authenticated:!!state.entitlementToken,port:PORT}));
-register('heartbeat',()=>{playbackLease.touch();return {active:!!state.play};});
-register('stop',()=>{playbackLease.release();state.play=null;state.allowedHosts.clear();return {stopped:true};});
+register('heartbeat',async()=>{
+  const authenticated=!!(state.entitlementToken&&state.location);
+  if(authenticated)await sessionLease.acquire();
+  return {authenticated,active:!!state.play};
+});
+register('suspend',()=>{sessionLease.release();return {suspended:true};});
+register('stop',()=>{state.play=null;state.allowedHosts.clear();return {stopped:true};});
 register('login',({email,password})=>signIn(email,password));
 register('token',({token})=>init(token));
 register('catalog',({kind})=>catalog(kind));
 register('play',({contentId,channelId,requestUhd})=>getPlay(contentId,channelId,!!requestUhd));
-register('logout',()=>{playbackLease.release();state.session=crypto.randomBytes(20).toString('hex');state.token=null;state.entitlementToken=null;state.location=null;state.play=null;state.allowedHosts.clear();return {authenticated:false};});
+register('logout',()=>{sessionLease.release();state.session=crypto.randomBytes(20).toString('hex');state.token=null;state.entitlementToken=null;state.location=null;state.play=null;state.allowedHosts.clear();return {authenticated:false};});
 console.log('[F1TV] service registered');

@@ -56,6 +56,8 @@ class BuildTests(unittest.TestCase):
         self.assertIn(app+'vendor/SHAKA-LICENSE', files)
         self.assertIn(service+'relay-policy.js', files)
         self.assertIn(service+'auth.js', files)
+        self.assertIn(service+'session-lease.js', files)
+        self.assertNotIn(service+'playback-lease.js', files)
         self.assertIn(service+'FASTF1-LICENSE', files)
         self.assertNotIn(b'<script src="https://', files[app+'index.html'])
         self.assertFalse(any('.DS_Store' in name for name in files))
