@@ -4,19 +4,19 @@
       "id": "com.bruvv.f1tv",
       "title": "F1 TV UHD Lab",
       "shortDescription": "Standalone F1 TV catalog and DASH Widevine playback prototype",
-      "iconUri": "https://raw.githubusercontent.com/bruvv/f1tv-webos-4k-hdr/v0.2.3/app/icon.png",
+      "iconUri": "https://raw.githubusercontent.com/bruvv/f1tv-webos-4k-hdr/v0.2.4/app/icon.png",
       "manifest": {
         "id": "com.bruvv.f1tv",
-        "version": "0.2.3",
+        "version": "0.2.4",
         "title": "F1 TV UHD Lab",
         "appDescription": "Standalone F1 TV catalog and DASH Widevine playback prototype",
-        "iconUri": "https://raw.githubusercontent.com/bruvv/f1tv-webos-4k-hdr/v0.2.3/app/icon.png",
+        "iconUri": "https://raw.githubusercontent.com/bruvv/f1tv-webos-4k-hdr/v0.2.4/app/icon.png",
         "sourceUrl": "https://github.com/bruvv/f1tv-webos-4k-hdr",
-        "ipkUrl": "https://github.com/bruvv/f1tv-webos-4k-hdr/releases/download/v0.2.3/com.bruvv.f1tv_0.2.3_all.ipk",
+        "ipkUrl": "https://github.com/bruvv/f1tv-webos-4k-hdr/releases/download/v0.2.4/com.bruvv.f1tv_0.2.4_all.ipk",
         "ipkHash": {
-          "sha256": "6b14819bf02ed1494165688b05acd585c011fd88f386f9bc4ef72c53321831cd"
+          "sha256": "ad1761ca3b780ffeae87c1ac9e9ed4e65695c52ce49139e579e197db12cc6c8a"
         },
-        "ipkSize": 266266
+        "ipkSize": 267014
       }
     }
   ]
